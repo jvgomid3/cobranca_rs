@@ -39,30 +39,31 @@ def mes_ano_para_formato_curto(mes_ano):
         return mes_ano
 
 # -------------------- Atualizar planilha -------------------- #
-caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_PES.XLSX"
+# COMENTADO - Procura pelo arquivo Excel desabilitada
+# caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_PES.XLSX"
 
-def atualizar_planilha(encontrados, numero):
-    try:
-        wb = load_workbook(caminho_excel)
-        ws = wb.active
-        cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        idx_id = cabecalho.index("ID Vaga")
-        idx_mes = cabecalho.index("Mês/Ano")
-        idx_cobranca = cabecalho.index("Número Cobrança")
+# def atualizar_planilha(encontrados, numero):
+#     try:
+#         wb = load_workbook(caminho_excel)
+#         ws = wb.active
+#         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+#         idx_id = cabecalho.index("ID Vaga")
+#         idx_mes = cabecalho.index("Mês/Ano")
+#         idx_cobranca = cabecalho.index("Número Cobrança")
 
-        for row in ws.iter_rows(min_row=2):
-            id_vaga = row[idx_id].value
-            mes_ano = row[idx_mes].value
-            for d in encontrados:
-                if d["id"] == id_vaga and d["mes"] == mes_ano:
-                    row[idx_cobranca].value = numero
+#         for row in ws.iter_rows(min_row=2):
+#             id_vaga = row[idx_id].value
+#             mes_ano = row[idx_mes].value
+#             for d in encontrados:
+#                 if d["id"] == id_vaga and d["mes"] == mes_ano:
+#                     row[idx_cobranca].value = numero
 
-        wb.save(caminho_excel)
-        wb.close()
-        print(f"Planilha atualizada com o número {numero}")
+#         wb.save(caminho_excel)
+#         wb.close()
+#         print(f"Planilha atualizada com o número {numero}")
 
-    except Exception as e:
-        messagebox.showerror("Erro Excel", f"Falha ao atualizar planilha:\n{e}")
+#     except Exception as e:
+#         messagebox.showerror("Erro Excel", f"Falha ao atualizar planilha:\n{e}")
 
 # -------------------- Abrir SAP Web -------------------- #
 def abrir_sap_web(mes_ano, encontrados):
@@ -169,7 +170,8 @@ def abrir_sap_web(mes_ano, encontrados):
             """
 
             messagebox.showinfo("SAP Web", f"Processo Finalizado.\nChave: {numero}")
-            atualizar_planilha(encontrados, numero)
+            # COMENTADO - Atualização da planilha desabilitada
+            # atualizar_planilha(encontrados, numero)
 
             context.storage_state(path=STORAGE_STATE_PATH)
             browser.close()
@@ -180,54 +182,56 @@ def abrir_sap_web(mes_ano, encontrados):
         app.destroy()
 
 # -------------------- Excel - Carregar dados -------------------- #
-def carregar_dados():
-    try:
-        wb = load_workbook(caminho_excel, read_only=True, data_only=True)
-        ws = wb.active
-        cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Número Cobrança"]
-        for col in colunas_necessarias:
-            if col not in cabecalho:
-                raise ValueError(f"Coluna '{col}' não encontrada.")
+# COMENTADO - Carregamento de dados do Excel desabilitado
+# def carregar_dados():
+#     try:
+#         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
+#         ws = wb.active
+#         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+#         colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Número Cobrança"]
+#         for col in colunas_necessarias:
+#             if col not in cabecalho:
+#                 raise ValueError(f"Coluna '{col}' não encontrada.")
 
-        idx_id = cabecalho.index("ID Vaga")
-        idx_nome = cabecalho.index("Nome do Aprovado")
-        idx_centro = cabecalho.index("Centro cst")
-        idx_mes = cabecalho.index("Mês/Ano")
-        idx_cobranca = cabecalho.index("Número Cobrança")
+#         idx_id = cabecalho.index("ID Vaga")
+#         idx_nome = cabecalho.index("Nome do Aprovado")
+#         idx_centro = cabecalho.index("Centro cst")
+#         idx_mes = cabecalho.index("Mês/Ano")
+#         idx_cobranca = cabecalho.index("Número Cobrança")
 
-        dados = []
-        meses_unicos = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if row[idx_mes] is None:
-                continue
-            mes = str(row[idx_mes])
-            if mes not in meses_unicos:
-                meses_unicos.append(mes)
-            dados.append({
-                "mes": mes,
-                "id": row[idx_id],
-                "nome": row[idx_nome],
-                "centro": row[idx_centro],
-                "cobranca": row[idx_cobranca]
-            })
+#         dados = []
+#         meses_unicos = []
+#         for row in ws.iter_rows(min_row=2, values_only=True):
+#             if row[idx_mes] is None:
+#                 continue
+#             mes = str(row[idx_mes])
+#             if mes not in meses_unicos:
+#                 meses_unicos.append(mes)
+#             dados.append({
+#                 "mes": mes,
+#                 "id": row[idx_id],
+#                 "nome": row[idx_nome],
+#                 "centro": row[idx_centro],
+#                 "cobranca": row[idx_cobranca]
+#             })
 
-        wb.close()
-        return meses_unicos, dados
+#         wb.close()
+#         return meses_unicos, dados
 
-    except Exception as e:
-        messagebox.showerror("Erro", f"Não foi possível ler o arquivo:\n{e}")
-        return [], []
+#     except Exception as e:
+#         messagebox.showerror("Erro", f"Não foi possível ler o arquivo:\n{e}")
+#         return [], []
 
 # -------------------- UI -------------------- #
-meses_anos, dados_planilha = carregar_dados()
+# TEMPORÁRIO - Dados de exemplo (substituir quando tiver novo arquivo)
+meses_anos = ["Janeiro/2026", "Fevereiro/2026", "Março/2026"]
+dados_planilha = []
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("Faturamento R&S")
-app.geometry("700x550")
 
 ctk.CTkLabel(app, text="Faturamento R&S", font=("Arial", 18, "bold")).pack(pady=10)
 ctk.CTkLabel(app, text="Selecione o Mês/Ano:").pack(pady=0)
@@ -244,8 +248,8 @@ filtro_var = ctk.BooleanVar(value=False)
 check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar vazias", variable=filtro_var)
 check_filtro.place(relx=0.8, rely=0.5, anchor="center")
 
-scrollable_frame = ctk.CTkScrollableFrame(app, width=650, height=250)
-scrollable_frame.pack(pady=10)
+scrollable_frame = ctk.CTkScrollableFrame(app)
+scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
 
 headers = ["ID Vaga", "Nome do Aprovado", "Centro de Custo", "Número Cobrança"]
 for col, h in enumerate(headers):
@@ -320,5 +324,8 @@ def confirmar():
     atualizar_tabela()
 
 btn_confirmar.configure(command=confirmar)
+
+# Maximizar a janela após todos os widgets serem criados
+app.after(0, lambda: app.state('zoomed'))
 
 app.mainloop()
