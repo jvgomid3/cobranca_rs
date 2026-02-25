@@ -188,7 +188,7 @@ def abrir_sap_web(mes_ano, encontrados):
 #         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
 #         ws = wb.active
 #         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-#         colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Número Cobrança"]
+#         colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Texto", "Número Cobrança"]
 #         for col in colunas_necessarias:
 #             if col not in cabecalho:
 #                 raise ValueError(f"Coluna '{col}' não encontrada.")
@@ -197,6 +197,9 @@ def abrir_sap_web(mes_ano, encontrados):
 #         idx_nome = cabecalho.index("Nome do Aprovado")
 #         idx_centro = cabecalho.index("Centro cst")
 #         idx_mes = cabecalho.index("Mês/Ano")
+#         idx_indice = cabecalho.index("Índice")
+#         idx_qtd = cabecalho.index("Qtd")
+#         idx_texto = cabecalho.index("Texto")
 #         idx_cobranca = cabecalho.index("Número Cobrança")
 
 #         dados = []
@@ -212,6 +215,9 @@ def abrir_sap_web(mes_ano, encontrados):
 #                 "id": row[idx_id],
 #                 "nome": row[idx_nome],
 #                 "centro": row[idx_centro],
+#                 "indice": row[idx_indice],
+#                 "qtd": row[idx_qtd],
+#                 "texto": row[idx_texto],
 #                 "cobranca": row[idx_cobranca]
 #             })
 
@@ -225,7 +231,10 @@ def abrir_sap_web(mes_ano, encontrados):
 # -------------------- UI -------------------- #
 # TEMPORÁRIO - Dados de exemplo (substituir quando tiver novo arquivo)
 meses_anos = ["Janeiro/2026", "Fevereiro/2026", "Março/2026"]
-dados_planilha = []
+dados_planilha = [
+    {"mes": "Janeiro/2026", "id": "001", "nome": "João Silva", "centro": "1000", "indice": "HRSR26", "qtd": "1", "texto": "Tipo de serviço PES", "cobranca": ""},
+    {"mes": "Janeiro/2026", "id": "002", "nome": "Maria Santos", "centro": "1001", "indice": "HRSR26", "qtd": "1", "texto": "Tipo de serviço PES", "cobranca": "12345"},
+]
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -251,7 +260,7 @@ check_filtro.place(relx=0.8, rely=0.5, anchor="center")
 scrollable_frame = ctk.CTkScrollableFrame(app)
 scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
 
-headers = ["ID Vaga", "Nome do Aprovado", "Centro de Custo", "Número Cobrança"]
+headers = ["ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Texto", "Número Cobrança"]
 for col, h in enumerate(headers):
     ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold")).grid(
         row=0, column=col, padx=5, pady=5, sticky="nsew"
@@ -266,9 +275,9 @@ def preparar_clipboard(dados_filtrados):
     linhas = []
     for d in dados_filtrados:
         centro = str(d["centro"])
-        indice = "HRSR26"
-        qtd = "1"
-        texto = "Tipo de serviço PES"
+        indice = d.get("indice", "HRSR26")
+        qtd = d.get("qtd", "1")
+        texto = d.get("texto", "Tipo de serviço PES")
         linha = f"{centro}\t{indice}\t{qtd}\t{texto}"
         linhas.append(linha)
     conteudo = "\n".join(linhas)
@@ -290,7 +299,10 @@ def atualizar_tabela():
         ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=0, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("texto", "Tipo de serviço PES"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
 
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
 
