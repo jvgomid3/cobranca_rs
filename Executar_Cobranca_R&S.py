@@ -39,31 +39,28 @@ def mes_ano_para_formato_curto(mes_ano):
         return mes_ano
 
 # -------------------- Atualizar planilha -------------------- #
-# COMENTADO - Procura pelo arquivo Excel desabilitada
-# caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_PES.XLSX"
+def atualizar_planilha(encontrados, numero):
+    try:
+        wb = load_workbook(caminho_excel)
+        ws = wb.active
+        cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        idx_id = cabecalho.index("ID Vaga")
+        idx_mes = cabecalho.index("Mês/Ano")
+        idx_cobranca = cabecalho.index("Número Cobrança")
 
-# def atualizar_planilha(encontrados, numero):
-#     try:
-#         wb = load_workbook(caminho_excel)
-#         ws = wb.active
-#         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-#         idx_id = cabecalho.index("ID Vaga")
-#         idx_mes = cabecalho.index("Mês/Ano")
-#         idx_cobranca = cabecalho.index("Número Cobrança")
+        for row in ws.iter_rows(min_row=2):
+            id_vaga = row[idx_id].value
+            mes_ano = row[idx_mes].value
+            for d in encontrados:
+                if d["id"] == id_vaga and d["mes"] == mes_ano:
+                    row[idx_cobranca].value = numero
 
-#         for row in ws.iter_rows(min_row=2):
-#             id_vaga = row[idx_id].value
-#             mes_ano = row[idx_mes].value
-#             for d in encontrados:
-#                 if d["id"] == id_vaga and d["mes"] == mes_ano:
-#                     row[idx_cobranca].value = numero
+        wb.save(caminho_excel)
+        wb.close()
+        print(f"Planilha atualizada com o número {numero}")
 
-#         wb.save(caminho_excel)
-#         wb.close()
-#         print(f"Planilha atualizada com o número {numero}")
-
-#     except Exception as e:
-#         messagebox.showerror("Erro Excel", f"Falha ao atualizar planilha:\n{e}")
+    except Exception as e:
+        messagebox.showerror("Erro Excel", f"Falha ao atualizar planilha:\n{e}")
 
 # -------------------- Abrir SAP Web -------------------- #
 def abrir_sap_web(mes_ano, encontrados):
@@ -170,8 +167,7 @@ def abrir_sap_web(mes_ano, encontrados):
             """
 
             messagebox.showinfo("SAP Web", f"Processo Finalizado.\nChave: {numero}")
-            # COMENTADO - Atualização da planilha desabilitada
-            # atualizar_planilha(encontrados, numero)
+            atualizar_planilha(encontrados, numero)
 
             context.storage_state(path=STORAGE_STATE_PATH)
             browser.close()
@@ -182,59 +178,54 @@ def abrir_sap_web(mes_ano, encontrados):
         app.destroy()
 
 # -------------------- Excel - Carregar dados -------------------- #
-# COMENTADO - Carregamento de dados do Excel desabilitado
-# def carregar_dados():
-#     try:
-#         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
-#         ws = wb.active
-#         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-#         colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Texto", "Número Cobrança"]
-#         for col in colunas_necessarias:
-#             if col not in cabecalho:
-#                 raise ValueError(f"Coluna '{col}' não encontrada.")
+caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_R&S.xlsx"
 
-#         idx_id = cabecalho.index("ID Vaga")
-#         idx_nome = cabecalho.index("Nome do Aprovado")
-#         idx_centro = cabecalho.index("Centro cst")
-#         idx_mes = cabecalho.index("Mês/Ano")
-#         idx_indice = cabecalho.index("Índice")
-#         idx_qtd = cabecalho.index("Qtd")
-#         idx_texto = cabecalho.index("Texto")
-#         idx_cobranca = cabecalho.index("Número Cobrança")
+def carregar_dados():
+    try:
+        wb = load_workbook(caminho_excel, read_only=True, data_only=True)
+        ws = wb.active
+        cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Número Cobrança"]
+        for col in colunas_necessarias:
+            if col not in cabecalho:
+                raise ValueError(f"Coluna '{col}' não encontrada.")
 
-#         dados = []
-#         meses_unicos = []
-#         for row in ws.iter_rows(min_row=2, values_only=True):
-#             if row[idx_mes] is None:
-#                 continue
-#             mes = str(row[idx_mes])
-#             if mes not in meses_unicos:
-#                 meses_unicos.append(mes)
-#             dados.append({
-#                 "mes": mes,
-#                 "id": row[idx_id],
-#                 "nome": row[idx_nome],
-#                 "centro": row[idx_centro],
-#                 "indice": row[idx_indice],
-#                 "qtd": row[idx_qtd],
-#                 "texto": row[idx_texto],
-#                 "cobranca": row[idx_cobranca]
-#             })
+        idx_id = cabecalho.index("ID Vaga")
+        idx_nome = cabecalho.index("Nome do Aprovado")
+        idx_centro = cabecalho.index("Centro cst")
+        idx_mes = cabecalho.index("Mês/Ano")
+        idx_indice = cabecalho.index("Índice")
+        idx_qtd = cabecalho.index("Qtd")
+        idx_cobranca = cabecalho.index("Número Cobrança")
 
-#         wb.close()
-#         return meses_unicos, dados
+        dados = []
+        meses_unicos = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row[idx_mes] is None:
+                continue
+            mes = str(row[idx_mes])
+            if mes not in meses_unicos:
+                meses_unicos.append(mes)
+            dados.append({
+                "mes": mes,
+                "id": row[idx_id],
+                "nome": row[idx_nome],
+                "centro": row[idx_centro],
+                "indice": row[idx_indice],
+                "qtd": row[idx_qtd],
+                "cobranca": row[idx_cobranca]
+            })
+            # Nota: O campo "texto" será gerado dinamicamente como: f"Recuperação custo {mes} HRS1-LA R&S"
 
-#     except Exception as e:
-#         messagebox.showerror("Erro", f"Não foi possível ler o arquivo:\n{e}")
-#         return [], []
+        wb.close()
+        return meses_unicos, dados
+
+    except Exception as e:
+        messagebox.showerror("Erro", f"Não foi possível ler o arquivo:\n{e}")
+        return [], []
 
 # -------------------- UI -------------------- #
-# TEMPORÁRIO - Dados de exemplo (substituir quando tiver novo arquivo)
-meses_anos = ["Janeiro/2026", "Fevereiro/2026", "Março/2026"]
-dados_planilha = [
-    {"mes": "Janeiro/2026", "id": "001", "nome": "João Silva", "centro": "1000", "indice": "HRSR26", "qtd": "1", "texto": "Tipo de serviço PES", "cobranca": ""},
-    {"mes": "Janeiro/2026", "id": "002", "nome": "Maria Santos", "centro": "1001", "indice": "HRSR26", "qtd": "1", "texto": "Tipo de serviço PES", "cobranca": "12345"},
-]
+meses_anos, dados_planilha = carregar_dados()
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -281,13 +272,13 @@ executar_btn = ctk.CTkButton(app, text="Executar", command=lambda: executar())
 executar_btn.pack(pady=10)
 
 # -------------------- Funções Auxiliares -------------------- #
-def preparar_clipboard(dados_filtrados):
+def preparar_clipboard(dados_filtrados, mes_ano):
     linhas = []
     for d in dados_filtrados:
         centro = str(d["centro"])
         indice = d.get("indice", "HRSR26")
         qtd = d.get("qtd", "1")
-        texto = d.get("texto", "Tipo de serviço PES")
+        texto = f"Recuperação custo {mes_ano} HRS1-LA R&S"
         linha = f"{centro}\t{indice}\t{qtd}\t{texto}"
         linhas.append(linha)
     conteudo = "\n".join(linhas)
@@ -318,13 +309,16 @@ def atualizar_tabela():
         # Checkbox na primeira coluna - compacto
         ctk.CTkCheckBox(scrollable_frame, text="", variable=var, width=20).grid(row=row_idx, column=0, padx=2, pady=2)
         
+        # Gerar texto dinamicamente baseado no mês selecionado
+        texto_dinamico = f"Recuperação custo {escolhido} HRS1-LA R&S"
+        
         # Dados nas colunas seguintes
         ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("texto", "Tipo de serviço PES"), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=texto_dinamico, bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
@@ -342,7 +336,7 @@ def executar():
         messagebox.showinfo("Info", f"Nenhum item selecionado para {escolhido}")
         return
 
-    preparar_clipboard(encontrados)
+    preparar_clipboard(encontrados, escolhido)
 
     resposta = messagebox.askyesno(
         "Confirmação",
