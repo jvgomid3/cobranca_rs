@@ -260,12 +260,22 @@ check_filtro.place(relx=0.8, rely=0.5, anchor="center")
 scrollable_frame = ctk.CTkScrollableFrame(app)
 scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
 
-headers = ["ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Texto", "Número Cobrança"]
+# Lista para armazenar as variáveis de checkbox e dados associados
+checkbox_vars = []
+
+headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Texto", "Número Cobrança"]
 for col, h in enumerate(headers):
-    ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold")).grid(
-        row=0, column=col, padx=5, pady=5, sticky="nsew"
-    )
-    scrollable_frame.grid_columnconfigure(col, weight=1)
+    if col == 0:
+        # Coluna de checkbox - largura fixa pequena
+        ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold"), width=40).grid(
+            row=0, column=col, padx=2, pady=5, sticky="nsew"
+        )
+        scrollable_frame.grid_columnconfigure(col, minsize=40, weight=0)
+    else:
+        ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold")).grid(
+            row=0, column=col, padx=5, pady=5, sticky="nsew"
+        )
+        scrollable_frame.grid_columnconfigure(col, weight=1)
 
 executar_btn = ctk.CTkButton(app, text="Executar", command=lambda: executar())
 executar_btn.pack(pady=10)
@@ -286,9 +296,13 @@ def preparar_clipboard(dados_filtrados):
 
 # -------------------- Funções UI -------------------- #
 def atualizar_tabela():
+    global checkbox_vars
     escolhido = combo.get()
     for widget in scrollable_frame.winfo_children()[len(headers):]:
         widget.destroy()
+
+    # Limpar a lista de checkboxes
+    checkbox_vars.clear()
 
     encontrados = [d for d in dados_planilha if d["mes"] == escolhido]
     if filtro_var.get():
@@ -296,13 +310,22 @@ def atualizar_tabela():
 
     for row_idx, d in enumerate(encontrados, start=1):
         bg_color = "#f5f5f5" if row_idx % 2 == 0 else "#ffffff"
-        ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=0, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("texto", "Tipo de serviço PES"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
+        
+        # Criar variável de checkbox e adicionar à lista (já marcado por padrão)
+        var = ctk.BooleanVar(value=True)
+        checkbox_vars.append({"var": var, "data": d})
+        
+        # Checkbox na primeira coluna - compacto
+        ctk.CTkCheckBox(scrollable_frame, text="", variable=var, width=20).grid(row=row_idx, column=0, padx=2, pady=2)
+        
+        # Dados nas colunas seguintes
+        ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("texto", "Tipo de serviço PES"), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
 
@@ -312,12 +335,11 @@ def executar():
         messagebox.showwarning("Atenção", "Selecione um Mês/Ano antes de executar.")
         return
 
-    encontrados = [d for d in dados_planilha if d["mes"] == escolhido]
-    if filtro_var.get():
-        encontrados = [d for d in encontrados if d["cobranca"] in (None, "")]
+    # Filtrar apenas os itens selecionados via checkbox
+    encontrados = [item["data"] for item in checkbox_vars if item["var"].get()]
 
     if not encontrados:
-        messagebox.showinfo("Info", f"Nenhum dado encontrado para {escolhido}")
+        messagebox.showinfo("Info", f"Nenhum item selecionado para {escolhido}")
         return
 
     preparar_clipboard(encontrados)
