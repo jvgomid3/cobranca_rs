@@ -18,7 +18,7 @@ import win32com.client as win32
 from datetime import datetime
 
 # -------------------- Configurações SAP Web -------------------- #
-SAP_WEB_URL = "https://ps0.wdisp.bosch.com/sap/bc/gui/sap/its/webgui#"
+SAP_WEB_URL = "https://qs0.wdisp.bosch.com/sap/bc/gui/sap/its/webgui#"
 STORAGE_STATE_PATH = "sap_session.json"
 
 # -------------------- Função para converter mês/ano -------------------- #
@@ -72,7 +72,7 @@ def abrir_sap_web(mes_ano, encontrados):
                 args=[
                     "--enable-features=ClipboardReadWrite",
                     "--disable-features=IsolateOrigins,site-per-process",
-                    "--unsafely-treat-insecure-origin-as-secure=https://ps0.wdisp.bosch.com"
+                    "--unsafely-treat-insecure-origin-as-secure=https://qs0.wdisp.bosch.com"
                 ]
             )
 
@@ -91,17 +91,12 @@ def abrir_sap_web(mes_ano, encontrados):
             page.goto(SAP_WEB_URL)
             page.evaluate("document.body.style.zoom='80%'")
             
-            # 👇 se aparecer a tela de login (campo sap-user)
+            # Verificação de login
             try:
                 login_user = page.locator('//*[@id="sap-user"]')
                 if login_user.is_visible():
                     print("Tela de login detectada — aguarde login manual...")
                     page.wait_for_selector('//*[@id="sap-password"]', timeout=15000)
-                    # 
-                    # login_user.fill("seu_usuario")
-                    # page.fill('//*[@id="sap-password"]', "sua_senha")
-                    # page.press('//*[@id="sap-password"]', 'Enter')
-                    # ou apenas esperar manualmente
                     page.wait_for_function("document.querySelector('#sap-user') === null", timeout=120000)
                     print("Login realizado, continuando...")
             except Exception:
@@ -109,73 +104,115 @@ def abrir_sap_web(mes_ano, encontrados):
             
             page.wait_for_timeout(5000)
 
+            # Verificação do botão de continuar
+            try:
+                cont_btn = page.locator('//*[@id="SYSTEM_MESSAGE_CONTINUE_BUTTON"]')
+                if cont_btn.is_visible():
+                    print("Botão de avançar detectado — será clicado...")
+                    cont_btn.click()
+                    page.wait_for_timeout(1500)
+                else:
+                    print("Botão de avançar não detectado — pulando para KB31N...")
+            except Exception:
+                print("Botão de avançar não detectado — pulando para KB31N...")
+
+            # Aguarda a tela carregar completamente antes de inserir KB31N
+            page.wait_for_timeout(1000)
+
             from playwright.sync_api import TimeoutError
 
             for tentativa in range(3):
                 try:
-                    page.wait_for_selector('//*[@id="ToolbarOkCode"]', timeout=10000)
+                    page.wait_for_selector('//*[@id="ToolbarOkCode"]', timeout=120000)
+                    page.wait_for_timeout(1000)  # Espera adicional antes de inserir
                     page.fill('//*[@id="ToolbarOkCode"]', '/nKB31N')
                     page.press('//*[@id="ToolbarOkCode"]', 'Enter')
-                    page.wait_for_timeout(2000)  # espera processar
+                    page.wait_for_timeout(2000)
                     break
                 except TimeoutError:
                     print(f"Tentativa {tentativa+1} falhou, tentando novamente...")
 
             page.wait_for_timeout(3000)
 
-            # -------------------- VERIFICAÇÃO DO CAMPO EMPRESA -------------------- #
+            # Verificação do campo empresa
             try:
                 campo_empresa = page.locator('//*[@id="M1:46:1::0:21"]')
                 if campo_empresa.is_visible():
                     campo_empresa.fill('0010')
                     campo_empresa.press('Enter')
                     page.wait_for_timeout(3000)
-                    print("Campo empresa encontrado e preenchido.")
-                else:
-                    print("Tela de empresa não apareceu. Pulando...")
             except Exception as e:
                 print(f"Campo empresa não encontrado. Pulando... ({e})")
-            # ---------------------------------------------------------------------- #
 
             page.click('//*[@id="M0:46:2:1::13:35"]')
-            page.wait_for_timeout(3000)
-
-            page.fill('//*[@id="M0:46:1:1:2B256::4:12"]', f"Recuperação Custo {mes_ano} R&S - PES")
-            page.press('//*[@id="M0:46:1:1:2B256::4:12"]', 'Enter')
             page.wait_for_timeout(2000)
             
-            page.click('//*[@id="M0:36::btn[11]"]')
-
-            mensagem = page.inner_text('xpath=//*[@id="wnd[0]/sbar_msg-txt"]')
-            numero = re.search(r"\d+", mensagem).group()
-
-            pyperclip.copy(numero)
-            print(f"Número copiado: {numero}")
-
-            formato_curto = mes_ano_para_formato_curto(mes_ano)
-            outlook = win32.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)
-            mail.To = "Alessandro.Garbelini@br.bosch.com"
-            mail.Subject = f"Apontamentos HRS - MBR{formato_curto}"
-            mail.Display()
-            mail.HTMLBody = f"""
-            Olá!<br><br>
-            Segue a chave referente ao apontamento de {mes_ano}.<br>
-            Nº {numero}<br><br>
-            Atenciosamente,<br>
-            {mail.HTMLBody}
-            """
-
-            messagebox.showinfo("SAP Web", f"Processo Finalizado.\nChave: {numero}")
-            atualizar_planilha(encontrados, numero)
-
+            # Clica no botão e preenche o campo de texto
+            try:
+                page.click('//*[@id="M0:46:1:1:2B256::4:12"]')
+                page.wait_for_timeout(1000)
+                
+                # Pega o mês e ano atual
+                agora = datetime.now()
+                meses_pt = {
+                    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
+                    7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+                }
+                mes_atual = meses_pt[agora.month]
+                ano_atual = agora.year
+                
+                # Monta o texto completo
+                texto_campo = f"Recuperação custo {mes_atual}/{ano_atual} HRS2-LA R&S"
+                
+                # Preenche o campo usando keyboard.type
+                page.keyboard.type(texto_campo)
+                print(f"Campo preenchido com: {texto_campo}")
+                
+            except Exception as e:
+                print(f"Erro ao preencher campo: {e}")
+            
+            # Aguarda um momento
+            page.wait_for_timeout(500)
+            
+            # ========== SALVAR E CAPTURAR NÚMERO (COMENTADO PARA TESTES) ========== #
+            # numero_cobranca = None
+            # try:
+            #     print("Clicando em salvar...")
+            #     page.click('//*[@id="M0:36::btn[11]"]')
+            #     page.wait_for_timeout(2000)
+            #     
+            #     # Captura a mensagem da barra de status
+            #     mensagem = page.inner_text('xpath=//*[@id="wnd[0]/sbar_msg-txt"]')
+            #     print(f"Mensagem capturada: {mensagem}")
+            #     
+            #     # Extrai o número da mensagem
+            #     match = re.search(r"\d+", mensagem)
+            #     if match:
+            #         numero_cobranca = match.group()
+            #         print(f"Número de cobrança gerado: {numero_cobranca}")
+            #     else:
+            #         print("Nenhum número encontrado na mensagem!")
+            #         
+            # except Exception as e:
+            #     print(f"Erro ao salvar e capturar número: {e}")
+            # 
+            # # Só continua se conseguiu capturar o número
+            # if not numero_cobranca:
+            #     print("ATENÇÃO: Não foi possível capturar o número de cobrança.")
+            #     return
+            # ======================================================================= #
+            
+            page.wait_for_timeout(1000)
+            
+            messagebox.showinfo("SAP Web", "Processo executado (sem salvar).\nVerifique a tela do SAP.")
+            
             context.storage_state(path=STORAGE_STATE_PATH)
-            browser.close()
-            app.destroy()
+            # browser.close()  # Comentado para você verificar a tela
+            # app.destroy()  # Comentado para você verificar a tela
 
     except Exception as e:
-        messagebox.showerror("Erro SAP Web", f"Não foi possível seguir com o SAP Web.\n")
-        app.destroy()
+        messagebox.showerror("Erro SAP Web", f"Não foi possível seguir com o SAP Web.\n{e}")
+        # app.destroy()  # Comentado para você verificar o erro
 
 # -------------------- Excel - Carregar dados -------------------- #
 caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_R&S.xlsx"
