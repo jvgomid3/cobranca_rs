@@ -408,9 +408,9 @@ def atualizar_tabela():
     if filtro_var.get():
         encontrados = [d for d in encontrados if d["cobranca"] in (None, "")]
     
-    # Aplicar filtro de canceladas (remove/esconde as que contêm "Cancelada")
+    # Aplicar filtro de canceladas (esconde/remove as que contêm "Cancelada")
     if filtro_canceladas_var.get():
-        encontrados = [d for d in encontrados if "cancelada" not in str(d.get("status", "")).lower()]
+        encontrados = [d for d in encontrados if "cancelada" in str(d.get("status", "")).lower()]
 
     for row_idx, d in enumerate(encontrados, start=1):
         bg_color = "#f5f5f5" if row_idx % 2 == 0 else "#ffffff"
