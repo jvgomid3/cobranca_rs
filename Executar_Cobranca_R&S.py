@@ -62,6 +62,54 @@ def atualizar_planilha(encontrados, numero):
     except Exception as e:
         messagebox.showerror("Erro Excel", f"Falha ao atualizar planilha:\n{e}")
 
+# -------------------- Cancelar Cobrança -------------------- #
+def cancelar_cobranca_selecionados():
+    """Marca 'Não Cobrar' nos itens selecionados tanto no Excel quanto na interface"""
+    # Filtrar apenas os itens selecionados via checkbox
+    selecionados = [item["data"] for item in checkbox_vars if item["var"].get()]
+    
+    if not selecionados:
+        messagebox.showwarning("Atenção", "Nenhum item selecionado.")
+        return
+    
+    resposta = messagebox.askyesno(
+        "Confirmação",
+        f"Deseja marcar {len(selecionados)} registro(s) como 'Não Cobrar'?"
+    )
+    
+    if not resposta:
+        return
+    
+    try:
+        # Atualizar planilha Excel
+        wb = load_workbook(caminho_excel)
+        ws = wb.active
+        cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        idx_id = cabecalho.index("ID Vaga")
+        idx_mes = cabecalho.index("Mês/Ano")
+        idx_cobranca = cabecalho.index("Número Cobrança")
+        
+        for row in ws.iter_rows(min_row=2):
+            id_vaga = row[idx_id].value
+            mes_ano = row[idx_mes].value
+            for d in selecionados:
+                if d["id"] == id_vaga and d["mes"] == mes_ano:
+                    row[idx_cobranca].value = "Não Cobrar"
+                    # Atualizar também nos dados em memória
+                    d["cobranca"] = "Não Cobrar"
+        
+        wb.save(caminho_excel)
+        wb.close()
+        print(f"{len(selecionados)} registro(s) marcado(s) como 'Não Cobrar'")
+        
+        # Atualizar a tabela na interface
+        atualizar_tabela()
+        
+        messagebox.showinfo("Sucesso", f"{len(selecionados)} registro(s) marcado(s) como 'Não Cobrar'")
+        
+    except Exception as e:
+        messagebox.showerror("Erro", f"Falha ao cancelar cobrança:\n{e}")
+
 # -------------------- Abrir SAP Web -------------------- #
 def abrir_sap_web(mes_ano, encontrados):
     try:
@@ -276,15 +324,22 @@ ctk.CTkLabel(app, text="Selecione o Mês/Ano:").pack(pady=0)
 combo = ctk.CTkComboBox(app, values=meses_anos, width=200, justify="center")
 combo.pack(pady=5)
 
-frame_confirmar = ctk.CTkFrame(app, fg_color="transparent", height=50)
+frame_confirmar = ctk.CTkFrame(app, fg_color="transparent", height=80)
 frame_confirmar.pack(fill="x", pady=10)
 
 btn_confirmar = ctk.CTkButton(frame_confirmar, text="Confirmar", width=150)
-btn_confirmar.place(relx=0.5, rely=0.5, anchor="center")
+btn_confirmar.place(relx=0.5, rely=0.3, anchor="center")
+
+btn_cancelar_cobranca = ctk.CTkButton(frame_confirmar, text="Cancelar Cobrança", width=150)
+btn_cancelar_cobranca.place(relx=0.88, rely=0.3, anchor="center")
 
 filtro_var = ctk.BooleanVar(value=False)
-check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar vazias", variable=filtro_var)
-check_filtro.place(relx=0.8, rely=0.5, anchor="center")
+check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_var)
+check_filtro.place(relx=0.78, rely=0.7, anchor="center")
+
+filtro_canceladas_var = ctk.BooleanVar(value=False)
+check_filtro_canceladas = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Canceladas", variable=filtro_canceladas_var)
+check_filtro_canceladas.place(relx=0.88, rely=0.7, anchor="center")
 
 scrollable_frame = ctk.CTkScrollableFrame(app)
 scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
@@ -292,13 +347,27 @@ scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
 # Lista para armazenar as variáveis de checkbox e dados associados
 checkbox_vars = []
 
+# Variável para checkbox "Selecionar Todas"
+selecionar_todas_var = ctk.BooleanVar(value=True)
+
+def toggle_selecionar_todas():
+    """Marca ou desmarca todas as checkboxes das linhas"""
+    estado = selecionar_todas_var.get()
+    for item in checkbox_vars:
+        item["var"].set(estado)
+
 headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Status", "Número Cobrança"]
 for col, h in enumerate(headers):
     if col == 0:
-        # Coluna de checkbox - largura fixa pequena
-        ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold"), width=40).grid(
-            row=0, column=col, padx=2, pady=5, sticky="nsew"
+        # Coluna de checkbox - com checkbox "Selecionar Todas"
+        check_selecionar_todas = ctk.CTkCheckBox(
+            scrollable_frame, 
+            text="", 
+            variable=selecionar_todas_var, 
+            command=toggle_selecionar_todas,
+            width=20
         )
+        check_selecionar_todas.grid(row=0, column=col, padx=2, pady=5, sticky="nsew")
         scrollable_frame.grid_columnconfigure(col, minsize=40, weight=0)
     else:
         ctk.CTkLabel(scrollable_frame, text=h, font=("Arial", 12, "bold")).grid(
@@ -334,8 +403,14 @@ def atualizar_tabela():
     checkbox_vars.clear()
 
     encontrados = [d for d in dados_planilha if d["mes"] == escolhido]
+    
+    # Aplicar filtro de vazias
     if filtro_var.get():
         encontrados = [d for d in encontrados if d["cobranca"] in (None, "")]
+    
+    # Aplicar filtro de canceladas
+    if filtro_canceladas_var.get():
+        encontrados = [d for d in encontrados if "cancelada" not in str(d.get("status", "")).lower()]
 
     for row_idx, d in enumerate(encontrados, start=1):
         bg_color = "#f5f5f5" if row_idx % 2 == 0 else "#ffffff"
@@ -357,6 +432,7 @@ def atualizar_tabela():
         ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
+filtro_canceladas_var.trace_add("write", lambda *args: atualizar_tabela())
 
 def executar():
     escolhido = combo.get()
@@ -387,6 +463,7 @@ def confirmar():
     atualizar_tabela()
 
 btn_confirmar.configure(command=confirmar)
+btn_cancelar_cobranca.configure(command=cancelar_cobranca_selecionados)
 
 # Maximizar a janela após todos os widgets serem criados
 app.after(0, lambda: app.state('zoomed'))
