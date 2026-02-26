@@ -408,7 +408,7 @@ def atualizar_tabela():
     if filtro_var.get():
         encontrados = [d for d in encontrados if d["cobranca"] in (None, "")]
     
-    # Aplicar filtro de canceladas
+    # Aplicar filtro de canceladas (remove/esconde as que contêm "Cancelada")
     if filtro_canceladas_var.get():
         encontrados = [d for d in encontrados if "cancelada" not in str(d.get("status", "")).lower()]
 
