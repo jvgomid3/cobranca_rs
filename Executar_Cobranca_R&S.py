@@ -222,7 +222,7 @@ def carregar_dados():
         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
         ws = wb.active
         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Número Cobrança"]
+        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Status", "Número Cobrança"]
         for col in colunas_necessarias:
             if col not in cabecalho:
                 raise ValueError(f"Coluna '{col}' não encontrada.")
@@ -233,6 +233,7 @@ def carregar_dados():
         idx_mes = cabecalho.index("Mês/Ano")
         idx_indice = cabecalho.index("Índice")
         idx_qtd = cabecalho.index("Qtd")
+        idx_status = cabecalho.index("Status")
         idx_cobranca = cabecalho.index("Número Cobrança")
 
         dados = []
@@ -250,9 +251,9 @@ def carregar_dados():
                 "centro": row[idx_centro],
                 "indice": row[idx_indice],
                 "qtd": row[idx_qtd],
+                "status": row[idx_status],
                 "cobranca": row[idx_cobranca]
             })
-            # Nota: O campo "texto" será gerado dinamicamente como: f"Recuperação custo {mes} HRS1-LA R&S"
 
         wb.close()
         return meses_unicos, dados
@@ -291,7 +292,7 @@ scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
 # Lista para armazenar as variáveis de checkbox e dados associados
 checkbox_vars = []
 
-headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Texto", "Número Cobrança"]
+headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Status", "Número Cobrança"]
 for col, h in enumerate(headers):
     if col == 0:
         # Coluna de checkbox - largura fixa pequena
@@ -315,7 +316,7 @@ def preparar_clipboard(dados_filtrados, mes_ano):
         centro = str(d["centro"])
         indice = d.get("indice", "HRSR26")
         qtd = d.get("qtd", "1")
-        texto = f"Recuperação custo {mes_ano} HRS1-LA R&S"
+        texto = str(d["id"])  # Usa o ID Vaga como texto
         linha = f"{centro}\t{indice}\t{qtd}\t{texto}"
         linhas.append(linha)
     conteudo = "\n".join(linhas)
@@ -346,16 +347,13 @@ def atualizar_tabela():
         # Checkbox na primeira coluna - compacto
         ctk.CTkCheckBox(scrollable_frame, text="", variable=var, width=20).grid(row=row_idx, column=0, padx=2, pady=2)
         
-        # Gerar texto dinamicamente baseado no mês selecionado
-        texto_dinamico = f"Recuperação custo {escolhido} HRS1-LA R&S"
-        
         # Dados nas colunas seguintes
         ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=texto_dinamico, bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("status", ""), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
