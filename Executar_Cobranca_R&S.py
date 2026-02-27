@@ -270,7 +270,7 @@ def carregar_dados():
         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
         ws = wb.active
         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Status", "Número Cobrança"]
+        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Faturar?", "Status", "Número Cobrança"]
         for col in colunas_necessarias:
             if col not in cabecalho:
                 raise ValueError(f"Coluna '{col}' não encontrada.")
@@ -280,7 +280,7 @@ def carregar_dados():
         idx_centro = cabecalho.index("Centro cst")
         idx_mes = cabecalho.index("Mês/Ano")
         idx_indice = cabecalho.index("Índice")
-        idx_qtd = cabecalho.index("Qtd")
+        idx_faturar = cabecalho.index("Faturar?")
         idx_status = cabecalho.index("Status")
         idx_cobranca = cabecalho.index("Número Cobrança")
 
@@ -298,7 +298,7 @@ def carregar_dados():
                 "nome": row[idx_nome],
                 "centro": row[idx_centro],
                 "indice": row[idx_indice],
-                "qtd": row[idx_qtd],
+                "faturar": row[idx_faturar],
                 "status": row[idx_status],
                 "cobranca": row[idx_cobranca]
             })
@@ -356,7 +356,7 @@ def toggle_selecionar_todas():
     for item in checkbox_vars:
         item["var"].set(estado)
 
-headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Qtd", "Status", "Número Cobrança"]
+headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Faturar?", "Status", "Número Cobrança"]
 for col, h in enumerate(headers):
     if col == 0:
         # Coluna de checkbox - com checkbox "Selecionar Todas"
@@ -384,9 +384,9 @@ def preparar_clipboard(dados_filtrados, mes_ano):
     for d in dados_filtrados:
         centro = str(d["centro"])
         indice = d.get("indice", "HRSR26")
-        qtd = d.get("qtd", "1")
+        faturar = d.get("faturar", "1")
         texto = str(d["id"])  # Usa o ID Vaga como texto
-        linha = f"{centro}\t{indice}\t{qtd}\t{texto}"
+        linha = f"{centro}\t{indice}\t{faturar}\t{texto}"
         linhas.append(linha)
     conteudo = "\n".join(linhas)
     pyperclip.copy(conteudo)
@@ -427,7 +427,7 @@ def atualizar_tabela():
         ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("qtd", "1"), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("faturar", ""), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d.get("status", ""), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
