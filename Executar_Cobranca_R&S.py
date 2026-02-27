@@ -331,15 +331,19 @@ btn_confirmar = ctk.CTkButton(frame_confirmar, text="Confirmar", width=150)
 btn_confirmar.place(relx=0.5, rely=0.3, anchor="center")
 
 btn_cancelar_cobranca = ctk.CTkButton(frame_confirmar, text="Cancelar Cobrança", width=150)
-btn_cancelar_cobranca.place(relx=0.88, rely=0.3, anchor="center")
+btn_cancelar_cobranca.place(relx=0.92, rely=0.3, anchor="center")
 
-filtro_var = ctk.BooleanVar(value=False)
-check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_var)
-check_filtro.place(relx=0.78, rely=0.7, anchor="center")
+filtro_faturar_vazias_var = ctk.BooleanVar(value=False)
+check_filtro_faturar_vazias = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_faturar_vazias_var)
+check_filtro_faturar_vazias.place(relx=0.65, rely=0.7, anchor="center")
 
 filtro_canceladas_var = ctk.BooleanVar(value=False)
 check_filtro_canceladas = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Canceladas", variable=filtro_canceladas_var)
-check_filtro_canceladas.place(relx=0.88, rely=0.7, anchor="center")
+check_filtro_canceladas.place(relx=0.78, rely=0.7, anchor="center")
+
+filtro_var = ctk.BooleanVar(value=False)
+check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_var)
+check_filtro.place(relx=0.92, rely=0.7, anchor="center")
 
 scrollable_frame = ctk.CTkScrollableFrame(app)
 scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
@@ -404,6 +408,10 @@ def atualizar_tabela():
 
     encontrados = [d for d in dados_planilha if d["mes"] == escolhido]
     
+    # Aplicar filtro de vazias da coluna Faturar?
+    if filtro_faturar_vazias_var.get():
+        encontrados = [d for d in encontrados if d.get("faturar") in (None, "")]
+    
     # Aplicar filtro de vazias
     if filtro_var.get():
         encontrados = [d for d in encontrados if d["cobranca"] in (None, "")]
@@ -431,6 +439,7 @@ def atualizar_tabela():
         ctk.CTkLabel(scrollable_frame, text=d.get("status", ""), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
 
+filtro_faturar_vazias_var.trace_add("write", lambda *args: atualizar_tabela())
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
 filtro_canceladas_var.trace_add("write", lambda *args: atualizar_tabela())
 
