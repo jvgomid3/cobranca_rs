@@ -222,41 +222,77 @@ def abrir_sap_web(mes_ano, encontrados):
             # Aguarda um momento
             page.wait_for_timeout(500)
             
-            # ========== SALVAR E CAPTURAR NÚMERO (COMENTADO PARA TESTES) ========== #
-            # numero_cobranca = None
-            # try:
-            #     print("Clicando em salvar...")
-            #     page.click('//*[@id="M0:36::btn[11]"]')
-            #     page.wait_for_timeout(2000)
-            #     
-            #     # Captura a mensagem da barra de status
-            #     mensagem = page.inner_text('xpath=//*[@id="wnd[0]/sbar_msg-txt"]')
-            #     print(f"Mensagem capturada: {mensagem}")
-            #     
-            #     # Extrai o número da mensagem
-            #     match = re.search(r"\d+", mensagem)
-            #     if match:
-            #         numero_cobranca = match.group()
-            #         print(f"Número de cobrança gerado: {numero_cobranca}")
-            #     else:
-            #         print("Nenhum número encontrado na mensagem!")
-            #         
-            # except Exception as e:
-            #     print(f"Erro ao salvar e capturar número: {e}")
-            # 
-            # # Só continua se conseguiu capturar o número
-            # if not numero_cobranca:
-            #     print("ATENÇÃO: Não foi possível capturar o número de cobrança.")
-            #     return
-            # ======================================================================= #
+            # ========== SALVAR E CAPTURAR NÚMERO ========== #
+            numero_cobranca = None
+            try:
+                print("Clicando em salvar...")
+                page.click('//*[@id="M0:36::btn[11]"]')
+                page.wait_for_timeout(2000)
+                
+                # Captura a mensagem da barra de status
+                mensagem = page.inner_text('xpath=//*[@id="wnd[0]/sbar_msg-txt"]')
+                print(f"Mensagem capturada: {mensagem}")
+                
+                # Extrai o número da mensagem
+                match = re.search(r"\d+", mensagem)
+                if match:
+                    numero_cobranca = match.group()
+                    print(f"Número de cobrança gerado: {numero_cobranca}")
+                else:
+                    print("Nenhum número encontrado na mensagem!")
+                    
+            except Exception as e:
+                print(f"Erro ao salvar e capturar número: {e}")
+            
+            # Só continua se conseguiu capturar o número
+            if not numero_cobranca:
+                print("ATENÇÃO: Não foi possível capturar o número de cobrança.")
+                messagebox.showwarning("Atenção", "Não foi possível capturar o número de cobrança.")
+                context.storage_state(path=STORAGE_STATE_PATH)
+                return
+            
+            # Copia o número para o clipboard
+            pyperclip.copy(numero_cobranca)
+            print(f"Número copiado: {numero_cobranca}")
+            
+            # Atualiza a planilha com o número de cobrança
+            atualizar_planilha(encontrados, numero_cobranca)
+            
+            # Cria email no Outlook
+            try:
+                # Pega o mês e ano atual para o assunto
+                agora = datetime.now()
+                meses_pt = {
+                    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
+                    7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+                }
+                mes_atual = meses_pt[agora.month]
+                ano_atual = agora.year
+                
+                outlook = win32.Dispatch("Outlook.Application")
+                mail = outlook.CreateItem(0)
+                mail.To = "Alessandro.Garbelini@br.bosch.com"
+                mail.Subject = f"Recuperação custo {mes_atual}/{ano_atual} HRS2-LA R&S"
+                mail.Display()
+                mail.HTMLBody = f"""
+Olá!<br><br>
+Segue a chave referente à recuperação de custo de {mes_ano}.<br>
+Nº {numero_cobranca}<br><br>
+Atenciosamente,<br>
+{mail.HTMLBody}
+"""
+                print("Email criado no Outlook")
+            except Exception as e:
+                print(f"Erro ao criar email: {e}")
+                messagebox.showwarning("Atenção", f"Cobrança criada, mas houve erro ao criar email:\n{e}")
             
             page.wait_for_timeout(1000)
             
-            messagebox.showinfo("SAP Web", "Processo executado (sem salvar).\nVerifique a tela do SAP.")
+            messagebox.showinfo("Sucesso", f"Processo Finalizado.\nChave: {numero_cobranca}")
             
             context.storage_state(path=STORAGE_STATE_PATH)
-            # browser.close()  # Comentado para você verificar a tela
-            # app.destroy()  # Comentado para você verificar a tela
+            browser.close()
+            app.destroy()
 
     except Exception as e:
         messagebox.showerror("Erro SAP Web", f"Não foi possível seguir com o SAP Web.\n{e}")
