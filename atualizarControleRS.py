@@ -1,4 +1,4 @@
-"""
+r"""
 Atualiza a planilha Controle_Cobranca_R&S.xlsx a partir do arquivo RP_COBRANCAS.TXT.
 
 Regras implementadas (conforme você descreveu):
@@ -162,6 +162,7 @@ class RPRow:
     id_vaga: str
     nome_aprovado: str
     centro_cst: str
+    tipo_vaga: str  # coluna 4: G2, V2, CH, MS, MN, etc.
     cargo_id: str
     status: str
     mes_ano: str
@@ -185,6 +186,7 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
 
         # colunas 1-indexed
         id_vaga = format_id_vaga(parts[0])
+        tipo_vaga = safe_strip(parts[3])  # col 4: tipo de vaga (G2, V2, CH, etc.)
         centro_cst = safe_strip(parts[5])
         cargo_id = safe_strip(parts[6])  # col 7 para buscar Cargo SAP
         nome_aprovado = safe_strip(parts[7])
@@ -204,6 +206,7 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
                 id_vaga=id_vaga,
                 nome_aprovado=nome_aprovado,
                 centro_cst=centro_cst,
+                tipo_vaga=tipo_vaga,
                 cargo_id=cargo_id,
                 status=status_label(status_raw),
                 mes_ano=mes_ano,
@@ -212,6 +215,59 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
         )
 
     return rows, delim
+
+
+def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str) -> Tuple[str, str]:
+    """
+    Determina Cargo Catálogo e Índice baseado no tipo de vaga (coluna 4 do RP)
+    e no Cargo SAP.
+    Retorna (cargo_catalogo, indice).
+    """
+    tipo_vaga = tipo_vaga.upper().strip()
+    cargo_sap_upper = cargo_sap.upper().strip()
+
+    # Regra 1: G2 ou V2
+    if tipo_vaga in ("G2", "V2"):
+        return "SL2", "HRSR01"
+
+    # Regra 2: G1 ou V1
+    if tipo_vaga in ("G1", "V1"):
+        return "SL1", "HRSR02"
+
+    # Regra 3: CH
+    if tipo_vaga == "CH":
+        return "SLR", "HRSR03"
+
+    # Regra 4: MS ou (MN E Cargo SAP contém "Sr")
+    if tipo_vaga == "MS" or (tipo_vaga == "MN" and "SR" in cargo_sap_upper):
+        return "MN Sr.", "HRSR04"
+
+    # Regra 5: MN E Cargo SAP contém "Pl"
+    if tipo_vaga == "MN" and "PL" in cargo_sap_upper:
+        return "MN Pl.", "HRSR05"
+
+    # Regra 6: HN ou MN com cargo contendo Assist*, Tecnico*, ou Jr
+    if tipo_vaga == "HN" or (
+        tipo_vaga == "MN"
+        and (
+            "ASSIST" in cargo_sap_upper
+            or "TECNICO" in cargo_sap_upper
+            or "JR" in cargo_sap_upper
+        )
+    ):
+        return "MN Ass, Jr / HI", "HRSR06"
+
+    # Regra 7: HD ou HA
+    if tipo_vaga in ("HD", "HA"):
+        return "HD / Apprentice (HA)", "HRSR08"
+
+    # Regra 8: EB ou EU -> Intern
+    # Nota: Havia duplicação na regra (também HRSR16), usando apenas Intern
+    if tipo_vaga in ("EB", "EU"):
+        return "Intern", "HRSR09"
+
+    # Se não se encaixar em nenhuma regra, retorna vazio
+    return "", ""
 
 
 def load_cargos_sap_mapping(cargos_path: str) -> Dict[str, str]:
@@ -344,8 +400,7 @@ def main() -> int:
             continue
 
         cargo_sap = cargos_sap_map.get(rp.cargo_id, "")
-        cargo_catalogo = ""  # placeholder: será implementado posteriormente
-        indice = INDICE_POR_CARGO.get(cargo_catalogo, "") if cargo_catalogo else ""
+        cargo_catalogo, indice = determine_cargo_catalogo_indice(rp.tipo_vaga, cargo_sap)
 
         values = {
             hcol["ID Vaga"]: rp.id_vaga,
