@@ -164,6 +164,7 @@ class RPRow:
     centro_cst: str
     tipo_vaga: str  # coluna 4: G2, V2, CH, MS, MN, etc.
     cargo_id: str
+    is_pcd: bool  # coluna 9: 1=PCD, 2 ou vazio=não PCD
     status: str
     mes_ano: str
     faturar: str
@@ -188,8 +189,10 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
         id_vaga = format_id_vaga(parts[0])
         tipo_vaga = safe_strip(parts[3])  # col 4: tipo de vaga (G2, V2, CH, etc.)
         centro_cst = safe_strip(parts[5])
-        cargo_id = safe_strip(parts[6])  # col 7 para buscar Cargo SAP
+        cargo_id = safe_strip(parts[6])  # col 7: para buscar Cargo SAP
         nome_aprovado = safe_strip(parts[7])
+        pcd_flag = safe_strip(parts[8])  # col 9: 1=PCD, 2 ou vazio=não PCD
+        is_pcd = (pcd_flag == "1")
         status_raw = safe_strip(parts[4])
         dt_raw = safe_strip(parts[10])
         faturar = safe_strip(parts[11])
@@ -208,6 +211,7 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
                 centro_cst=centro_cst,
                 tipo_vaga=tipo_vaga,
                 cargo_id=cargo_id,
+                is_pcd=is_pcd,
                 status=status_label(status_raw),
                 mes_ano=mes_ano,
                 faturar=faturar,
@@ -217,15 +221,45 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
     return rows, delim
 
 
-def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str) -> Tuple[str, str]:
+def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str, is_pcd: bool = False) -> Tuple[str, str]:
     """
-    Determina Cargo Catálogo e Índice baseado no tipo de vaga (coluna 4 do RP)
-    e no Cargo SAP.
+    Determina Cargo Catálogo e Índice baseado no tipo de vaga (coluna 4 do RP),
+    Cargo SAP e se é vaga PCD (coluna 9 do RP).
     Retorna (cargo_catalogo, indice).
     """
     tipo_vaga = tipo_vaga.upper().strip()
     cargo_sap_upper = cargo_sap.upper().strip()
 
+    # ===== REGRAS PCD (Affirmative positions) - Prioridade maior =====
+    if is_pcd:
+        # Regra PCD 1: MS ou (MN E Cargo SAP contém "Sr")
+        if tipo_vaga == "MS" or (tipo_vaga == "MN" and "SR" in cargo_sap_upper):
+            return "Affirmative position - MN Sr.", "HRSR16"
+        
+        # Regra PCD 2: MN E Cargo SAP contém "Pl"
+        if tipo_vaga == "MN" and "PL" in cargo_sap_upper:
+            return "Affirmative position - MN Pl.", "HRSR17"
+        
+        # Regra PCD 3: HN ou MN com cargo contendo Assist*, Tecnico*, ou Jr
+        if tipo_vaga == "HN" or (
+            tipo_vaga == "MN"
+            and (
+                "ASSIST" in cargo_sap_upper
+                or "TECNICO" in cargo_sap_upper
+                or "JR" in cargo_sap_upper
+            )
+        ):
+            return "Affirmative position - MN Jr. / HI", "HRSR18"
+        
+        # Regra PCD 4: EB ou EU
+        if tipo_vaga in ("EB", "EU"):
+            return "Affirmative position - Intern", "HRSR19"
+        
+        # Regra PCD 5: HD ou HA
+        if tipo_vaga in ("HD", "HA"):
+            return "Affirmative position - HD / Apprentice (HA)", "HRSR20"
+    
+    # ===== REGRAS NORMAIS (Não PCD) =====
     # Regra 1: G2 ou V2
     if tipo_vaga in ("G2", "V2"):
         return "SL2", "HRSR01"
@@ -400,7 +434,7 @@ def main() -> int:
             continue
 
         cargo_sap = cargos_sap_map.get(rp.cargo_id, "")
-        cargo_catalogo, indice = determine_cargo_catalogo_indice(rp.tipo_vaga, cargo_sap)
+        cargo_catalogo, indice = determine_cargo_catalogo_indice(rp.tipo_vaga, cargo_sap, rp.is_pcd)
 
         values = {
             hcol["ID Vaga"]: rp.id_vaga,
