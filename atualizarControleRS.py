@@ -39,7 +39,7 @@ CARGOS_FILE_PATH = r"S:\HRC\hrs-br\hrs-br\Inter_Setor\BOTs\Cobrancas\HRS1\CARGOS
 XLSX_PATH = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_R&S.xlsx"
 
 SHEET_NAME = None  # None = primeira aba
-MAKE_BACKUP = True
+MAKE_BACKUP = False
 
 # Mapeamento do "Índice" por Cargo (PLACEHOLDER)
 # Depois você substitui isso pela regra real.
