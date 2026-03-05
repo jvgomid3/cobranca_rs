@@ -162,6 +162,7 @@ class RPRow:
     id_vaga: str
     nome_aprovado: str
     centro_cst: str
+    cargo_id: str
     status: str
     mes_ano: str
     faturar: str
@@ -185,6 +186,7 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
         # colunas 1-indexed
         id_vaga = format_id_vaga(parts[0])
         centro_cst = safe_strip(parts[5])
+        cargo_id = safe_strip(parts[6])  # col 7 para buscar Cargo SAP
         nome_aprovado = safe_strip(parts[7])
         status_raw = safe_strip(parts[4])
         dt_raw = safe_strip(parts[10])
@@ -202,6 +204,7 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
                 id_vaga=id_vaga,
                 nome_aprovado=nome_aprovado,
                 centro_cst=centro_cst,
+                cargo_id=cargo_id,
                 status=status_label(status_raw),
                 mes_ano=mes_ano,
                 faturar=faturar,
@@ -211,12 +214,11 @@ def parse_rp_rows(rp_path: str) -> Tuple[List[RPRow], str]:
     return rows, delim
 
 
-def load_cargos_mapping(cargos_path: str) -> Dict[str, str]:
+def load_cargos_sap_mapping(cargos_path: str) -> Dict[str, str]:
     """
-    Tenta montar um dict {ID_VAGA: CARGO} a partir de CARGOS_RBLA.TXT.
-    Como você não passou o layout, isso é "best effort":
-    - detecta delimitador
-    - usa CARGOS_HINTS para decidir quais colunas usar
+    Monta um dict {CARGO_ID: CARGO_SAP} a partir de CARGOS_RBLA.TXT.
+    - Chave: coluna 2 do CARGOS_RBLA.TXT
+    - Valor: coluna 4 do CARGOS_RBLA.TXT
     """
     if not os.path.exists(cargos_path):
         logger.warning(f"CARGOS_RBLA.TXT não encontrado em: {cargos_path}")
@@ -227,21 +229,21 @@ def load_cargos_mapping(cargos_path: str) -> Dict[str, str]:
         return {}
 
     delim = detect_delimiter(lines[0])
-    id_col = CARGOS_HINTS["id_vaga_col"] - 1
-    cargo_col = CARGOS_HINTS["cargo_col"] - 1
-
     mapping: Dict[str, str] = {}
 
     for i, ln in enumerate(lines, start=1):
         parts = [p.strip() for p in ln.split(delim)]
-        if len(parts) <= max(id_col, cargo_col):
+        # Precisamos pelo menos até a coluna 4 (index 3)
+        if len(parts) < 4:
             continue
-        key = safe_strip(parts[id_col])
-        val = safe_strip(parts[cargo_col])
+        # Coluna 2 (index 1) -> chave
+        # Coluna 4 (index 3) -> valor (Cargo SAP)
+        key = safe_strip(parts[1])
+        val = safe_strip(parts[3])
         if key and val:
             mapping[key] = val
 
-    logger.info(f"Mapeamento de cargos carregado: {len(mapping)} registros (delim='{delim}')")
+    logger.info(f"Mapeamento Cargo SAP carregado: {len(mapping)} registros (delim='{delim}')")
     return mapping
 
 
@@ -310,7 +312,7 @@ def main() -> int:
     rp_rows, rp_delim = parse_rp_rows(RP_FILE_PATH)
     logger.info(f"RPs lidas: {len(rp_rows)} (delim='{rp_delim}')")
 
-    cargos_map = load_cargos_mapping(CARGOS_FILE_PATH)
+    cargos_sap_map = load_cargos_sap_mapping(CARGOS_FILE_PATH)
 
     wb = load_workbook(XLSX_PATH)
     ws = wb[SHEET_NAME] if SHEET_NAME else wb.worksheets[0]
@@ -318,8 +320,9 @@ def main() -> int:
     headers = [
         "ID Vaga",
         "Nome do Aprovado",
-        "Centro cst",
-        "Cargo",
+        "Centro Custo",
+        "Cargo SAP",
+        "Cargo Catálogo",
         "Índice",
         "Qtd",
         "Status",
@@ -340,20 +343,22 @@ def main() -> int:
             skipped += 1
             continue
 
-        cargo = cargos_map.get(rp.id_vaga, "")
-        indice = INDICE_POR_CARGO.get(cargo, "") if cargo else ""
+        cargo_sap = cargos_sap_map.get(rp.cargo_id, "")
+        cargo_catalogo = ""  # placeholder: será implementado posteriormente
+        indice = INDICE_POR_CARGO.get(cargo_catalogo, "") if cargo_catalogo else ""
 
         values = {
             hcol["ID Vaga"]: rp.id_vaga,
             hcol["Nome do Aprovado"]: rp.nome_aprovado,
-            hcol["Centro cst"]: rp.centro_cst,
-            hcol["Cargo"]: cargo,           # placeholder (best effort)
-            hcol["Índice"]: indice,         # placeholder (best effort)
+            hcol["Centro Custo"]: rp.centro_cst,
+            hcol["Cargo SAP"]: cargo_sap,
+            hcol["Cargo Catálogo"]: cargo_catalogo,  # placeholder
+            hcol["Índice"]: indice,
             hcol["Qtd"]: "1",
             hcol["Status"]: rp.status,
             hcol["Mês/Ano"]: rp.mes_ano,
             hcol["Faturar?"]: rp.faturar,
-            hcol["Número Cobrança"]: "",    # não especificado
+            hcol["Número Cobrança"]: "",
         }
 
         new_row = append_row(ws, values)
