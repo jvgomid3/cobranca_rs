@@ -232,6 +232,10 @@ def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str, is_pcd: bool
 
     # ===== REGRAS PCD (Affirmative positions) - Prioridade maior =====
     if is_pcd:
+        # Regra PCD especial: Cargo começando com "Tecnico" (sempre Jr/HI, mesmo com Pl ou Sr)
+        if cargo_sap_upper.startswith("TECNICO"):
+            return "Affirmative position - MN Jr. / HI", "HRSR18"
+        
         # Regra PCD 1: MS ou (MN E Cargo SAP contém "Sr")
         if tipo_vaga == "MS" or (tipo_vaga == "MN" and "SR" in cargo_sap_upper):
             return "Affirmative position - MN Sr.", "HRSR16"
@@ -240,12 +244,11 @@ def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str, is_pcd: bool
         if tipo_vaga == "MN" and "PL" in cargo_sap_upper:
             return "Affirmative position - MN Pl.", "HRSR17"
         
-        # Regra PCD 3: HN ou MN com cargo contendo Assist*, Tecnico*, ou Jr
+        # Regra PCD 3: HN ou MN com cargo contendo Assist* ou Jr
         if tipo_vaga == "HN" or (
             tipo_vaga == "MN"
             and (
                 "ASSIST" in cargo_sap_upper
-                or "TECNICO" in cargo_sap_upper
                 or "JR" in cargo_sap_upper
             )
         ):
@@ -258,6 +261,19 @@ def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str, is_pcd: bool
         # Regra PCD 5: HD ou HA
         if tipo_vaga in ("HD", "HA"):
             return "Affirmative position - HD / Apprentice (HA)", "HRSR20"
+    
+    # ===== REGRAS BASEADAS EM CARGO SAP (Prioridade sobre regras de tipo_vaga) =====
+    # Regra Cargo SAP especial: Técnico (sempre Jr/HI, mesmo com Pl ou Sr)
+    if cargo_sap_upper.startswith("TECNICO"):
+        return "MN Ass, Jr / HI", "HRSR06"
+    
+    # Regra Cargo SAP 1: Supervisor
+    if "SUPERVISOR" in cargo_sap_upper:
+        return "R&S - MN Sr.", "HRSR04"
+    
+    # Regra Cargo SAP 2: Líder
+    if "LIDER" in cargo_sap_upper or "Leader" in cargo_sap_upper.title():
+        return "R&S - MN Jr. / HI", "HRSR06"
     
     # ===== REGRAS NORMAIS (Não PCD) =====
     # Regra 1: G2 ou V2
@@ -280,12 +296,11 @@ def determine_cargo_catalogo_indice(tipo_vaga: str, cargo_sap: str, is_pcd: bool
     if tipo_vaga == "MN" and "PL" in cargo_sap_upper:
         return "MN Pl.", "HRSR05"
 
-    # Regra 6: HN ou MN com cargo contendo Assist*, Tecnico*, ou Jr
+    # Regra 6: HN ou MN com cargo contendo Assist* ou Jr
     if tipo_vaga == "HN" or (
         tipo_vaga == "MN"
         and (
             "ASSIST" in cargo_sap_upper
-            or "TECNICO" in cargo_sap_upper
             or "JR" in cargo_sap_upper
         )
     ):
