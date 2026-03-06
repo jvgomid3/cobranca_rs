@@ -258,6 +258,10 @@ def abrir_sap_web(mes_ano, encontrados):
             # Atualiza a planilha com o número de cobrança
             atualizar_planilha(encontrados, numero_cobranca)
             
+            # Atualiza os dados em memória para refletir na interface
+            for d in encontrados:
+                d["cobranca"] = numero_cobranca
+            
             # Cria email no Outlook
             try:
                 # Pega o mês e ano atual para o assunto
@@ -288,11 +292,13 @@ Atenciosamente,<br>
             
             page.wait_for_timeout(1000)
             
+            # Atualiza a tabela na interface para mostrar o número
+            atualizar_tabela()
+            
             messagebox.showinfo("Sucesso", f"Processo Finalizado.\nChave: {numero_cobranca}")
             
             context.storage_state(path=STORAGE_STATE_PATH)
             browser.close()
-            app.destroy()
 
     except Exception as e:
         messagebox.showerror("Erro SAP Web", f"Não foi possível seguir com o SAP Web.\n{e}")
@@ -306,14 +312,16 @@ def carregar_dados():
         wb = load_workbook(caminho_excel, read_only=True, data_only=True)
         ws = wb.active
         cabecalho = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro cst", "Mês/Ano", "Índice", "Qtd", "Faturar?", "Status", "Número Cobrança"]
+        colunas_necessarias = ["ID Vaga", "Nome do Aprovado", "Centro Custo", "Subgrupo", "Cargo SAP", "Mês/Ano", "Índice", "Qtd", "Faturar?", "Status", "Número Cobrança"]
         for col in colunas_necessarias:
             if col not in cabecalho:
                 raise ValueError(f"Coluna '{col}' não encontrada.")
 
         idx_id = cabecalho.index("ID Vaga")
         idx_nome = cabecalho.index("Nome do Aprovado")
-        idx_centro = cabecalho.index("Centro cst")
+        idx_centro = cabecalho.index("Centro Custo")
+        idx_subgrupo = cabecalho.index("Subgrupo")
+        idx_cargo_sap = cabecalho.index("Cargo SAP")
         idx_mes = cabecalho.index("Mês/Ano")
         idx_indice = cabecalho.index("Índice")
         idx_qtd = cabecalho.index("Qtd")
@@ -334,6 +342,8 @@ def carregar_dados():
                 "id": row[idx_id],
                 "nome": row[idx_nome],
                 "centro": row[idx_centro],
+                "subgrupo": row[idx_subgrupo],
+                "cargo_sap": row[idx_cargo_sap],
                 "indice": row[idx_indice],
                 "qtd": row[idx_qtd],
                 "faturar": row[idx_faturar],
@@ -398,7 +408,7 @@ def toggle_selecionar_todas():
     for item in checkbox_vars:
         item["var"].set(estado)
 
-headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Índice", "Faturar?", "Status", "Número Cobrança"]
+headers = ["", "ID Vaga", "Nome do Aprovado", "Centro de Custo", "Subgrupo", "Cargo SAP", "Índice", "Faturar?", "Status", "Número Cobrança"]
 for col, h in enumerate(headers):
     if col == 0:
         # Coluna de checkbox - com checkbox "Selecionar Todas"
@@ -472,10 +482,12 @@ def atualizar_tabela():
         ctk.CTkLabel(scrollable_frame, text=d["id"], bg_color=bg_color).grid(row=row_idx, column=1, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["nome"], bg_color=bg_color).grid(row=row_idx, column=2, padx=5, pady=2, sticky="nsew")
         ctk.CTkLabel(scrollable_frame, text=d["centro"], bg_color=bg_color).grid(row=row_idx, column=3, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("faturar", ""), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d.get("status", ""), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
-        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("subgrupo", ""), bg_color=bg_color).grid(row=row_idx, column=4, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("cargo_sap", ""), bg_color=bg_color).grid(row=row_idx, column=5, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("indice", "HRSR26"), bg_color=bg_color).grid(row=row_idx, column=6, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("faturar", ""), bg_color=bg_color).grid(row=row_idx, column=7, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d.get("status", ""), bg_color=bg_color).grid(row=row_idx, column=8, padx=5, pady=2, sticky="nsew")
+        ctk.CTkLabel(scrollable_frame, text=d["cobranca"], bg_color=bg_color).grid(row=row_idx, column=9, padx=5, pady=2, sticky="nsew")
 
 filtro_faturar_vazias_var.trace_add("write", lambda *args: atualizar_tabela())
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())

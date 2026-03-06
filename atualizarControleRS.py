@@ -426,6 +426,7 @@ def main() -> int:
         "ID Vaga",
         "Nome do Aprovado",
         "Centro Custo",
+        "Subgrupo",
         "Cargo SAP",
         "Cargo Catálogo",
         "Índice",
@@ -450,11 +451,15 @@ def main() -> int:
 
         cargo_sap = cargos_sap_map.get(rp.cargo_id, "")
         cargo_catalogo, indice = determine_cargo_catalogo_indice(rp.tipo_vaga, cargo_sap, rp.is_pcd)
+        
+        # Se Faturar? = Não, então Número Cobrança = Não Cobrar
+        numero_cobranca = "Não Cobrar" if rp.faturar.strip().lower() == "não" else ""
 
         values = {
             hcol["ID Vaga"]: rp.id_vaga,
             hcol["Nome do Aprovado"]: rp.nome_aprovado,
             hcol["Centro Custo"]: rp.centro_cst,
+            hcol["Subgrupo"]: rp.tipo_vaga,
             hcol["Cargo SAP"]: cargo_sap,
             hcol["Cargo Catálogo"]: cargo_catalogo,  # placeholder
             hcol["Índice"]: indice,
@@ -462,7 +467,7 @@ def main() -> int:
             hcol["Status"]: rp.status,
             hcol["Mês/Ano"]: rp.mes_ano,
             hcol["Faturar?"]: rp.faturar,
-            hcol["Número Cobrança"]: "",
+            hcol["Número Cobrança"]: numero_cobranca,
         }
 
         new_row = append_row(ws, values)
