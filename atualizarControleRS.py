@@ -36,7 +36,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 # =========================
 RP_FILE_PATH = r"S:\HRC\hrs-br\hrs-br\Inter_Setor\BOTs\Cobrancas\HRS1\RP_COBRANCAS.TXT"
 CARGOS_FILE_PATH = r"S:\HRC\hrs-br\hrs-br\Inter_Setor\BOTs\Cobrancas\HRS1\CARGOS_RBLA.TXT"
-XLSX_PATH = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_R&S.xlsx"
+XLSX_PATH = r"S:\HRC\hrs-br\hrs-br\Inter_Setor\BOTs\Cobranca_RS\Controle_Cobranca_R&S.xlsx"
 
 SHEET_NAME = None  # None = primeira aba
 MAKE_BACKUP = False

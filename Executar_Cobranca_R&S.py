@@ -305,7 +305,7 @@ Atenciosamente,<br>
         # app.destroy()  # Comentado para você verificar o erro
 
 # -------------------- Excel - Carregar dados -------------------- #
-caminho_excel = r"C:\Users\ajl8ca\Desktop\HRS_Projects_Dev\cobranca_r&s\Controle_Cobranca_R&S.xlsx"
+caminho_excel = r"S:\HRC\hrs-br\hrs-br\Inter_Setor\BOTs\Cobranca_RS\Controle_Cobranca_R&S.xlsx"
 
 def carregar_dados():
     try:
