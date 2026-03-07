@@ -379,19 +379,19 @@ btn_confirmar = ctk.CTkButton(frame_confirmar, text="Confirmar", width=150)
 btn_confirmar.place(relx=0.5, rely=0.3, anchor="center")
 
 btn_cancelar_cobranca = ctk.CTkButton(frame_confirmar, text="Cancelar Cobrança", width=150)
-btn_cancelar_cobranca.place(relx=0.92, rely=0.3, anchor="center")
+btn_cancelar_cobranca.place(relx=0.93, rely=0.3, anchor="center")
 
 filtro_faturar_vazias_var = ctk.BooleanVar(value=False)
 check_filtro_faturar_vazias = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_faturar_vazias_var)
-check_filtro_faturar_vazias.place(relx=0.65, rely=0.7, anchor="center")
+check_filtro_faturar_vazias.place(relx=0.75, rely=0.7, anchor="center")
 
 filtro_canceladas_var = ctk.BooleanVar(value=False)
 check_filtro_canceladas = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Canceladas", variable=filtro_canceladas_var)
-check_filtro_canceladas.place(relx=0.78, rely=0.7, anchor="center")
+check_filtro_canceladas.place(relx=0.84, rely=0.7, anchor="center")
 
 filtro_var = ctk.BooleanVar(value=False)
 check_filtro = ctk.CTkCheckBox(frame_confirmar, text="Filtrar Vazias", variable=filtro_var)
-check_filtro.place(relx=0.92, rely=0.7, anchor="center")
+check_filtro.place(relx=0.93, rely=0.7, anchor="center")
 
 scrollable_frame = ctk.CTkScrollableFrame(app)
 scrollable_frame.pack(pady=10, padx=20, fill="both", expand=True)
