@@ -59,15 +59,37 @@ CARGOS_HINTS = {
 # ==========
 # LOGGING
 # ==========
+def ensure_standard_streams() -> None:
+    if sys.stdin is None:
+        sys.stdin = open(os.devnull, "r", encoding="utf-8")
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+
+def get_log_file_path() -> str:
+    log_dir = os.environ.get("TEMP") or os.getcwd()
+    return os.path.join(log_dir, "cobranca_rs_atualizacao.log")
+
+
 def setup_logger() -> logging.Logger:
+    ensure_standard_streams()
+
     logger = logging.getLogger("cobranca_rs")
     logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    logger.propagate = False
 
     fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(fmt)
     logger.addHandler(ch)
+
+    fh = logging.FileHandler(get_log_file_path(), encoding="utf-8")
+    fh.setFormatter(fmt)
+    logger.addHandler(fh)
 
     return logger
 
@@ -400,13 +422,23 @@ def make_backup(xlsx_path: str) -> Optional[str]:
     return backup_path
 
 
+def missing_path_message(label: str, path: str) -> str:
+    msg = f"{label} não encontrado: {path}"
+    if len(path) >= 2 and path[1] == ":":
+        msg += (
+            " | No Task Scheduler, confirme se a unidade mapeada está disponível para a conta da tarefa "
+            "ou troque para caminho UNC."
+        )
+    return msg
+
+
 def main() -> int:
     if not os.path.exists(RP_FILE_PATH):
-        logger.error(f"RP_COBRANCAS.TXT não encontrado: {RP_FILE_PATH}")
+        logger.error(missing_path_message("RP_COBRANCAS.TXT", RP_FILE_PATH))
         return 1
 
     if not os.path.exists(XLSX_PATH):
-        logger.error(f"Planilha não encontrada: {XLSX_PATH}")
+        logger.error(missing_path_message("Planilha", XLSX_PATH))
         return 1
 
     if MAKE_BACKUP:
@@ -488,4 +520,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception:
+        logger.exception("Falha não tratada durante a atualização.")
+        raise
