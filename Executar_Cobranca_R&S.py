@@ -20,6 +20,8 @@ from datetime import datetime
 # -------------------- Configurações SAP Web -------------------- #
 SAP_WEB_URL = "https://qs0.wdisp.bosch.com/sap/bc/gui/sap/its/webgui#"
 STORAGE_STATE_PATH = "sap_session.json"
+SAP_USER_XPATH = '//*[@id="sap-user"]'
+SAP_PASSWORD_XPATH = '//*[@id="sap-password"]'
 
 # -------------------- Função para converter mês/ano -------------------- #
 def mes_ano_para_formato_curto(mes_ano):
@@ -111,7 +113,7 @@ def cancelar_cobranca_selecionados():
         messagebox.showerror("Erro", f"Falha ao cancelar cobrança:\n{e}")
 
 # -------------------- Abrir SAP Web -------------------- #
-def abrir_sap_web(mes_ano, encontrados):
+def abrir_sap_web(mes_ano, encontrados, usuario_ps0=None, senha_ps0=None):
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(
@@ -139,16 +141,28 @@ def abrir_sap_web(mes_ano, encontrados):
             page.goto(SAP_WEB_URL)
             page.evaluate("document.body.style.zoom='80%'")
             
-            # Verificação de login
+            # Verificação de login apenas no início: se não aparecer, segue o fluxo normal.
             try:
-                login_user = page.locator('//*[@id="sap-user"]')
-                if login_user.is_visible():
-                    print("Tela de login detectada — aguarde login manual...")
-                    page.wait_for_selector('//*[@id="sap-password"]', timeout=15000)
-                    page.wait_for_function("document.querySelector('#sap-user') === null", timeout=120000)
-                    print("Login realizado, continuando...")
-            except Exception:
-                pass
+                page.wait_for_timeout(2000)
+                login_user = page.query_selector(f"xpath={SAP_USER_XPATH}")
+                login_password = page.query_selector(f"xpath={SAP_PASSWORD_XPATH}")
+
+                if login_user and login_password:
+                    if usuario_ps0 and senha_ps0:
+                        print("Tela de login detectada no início — preenchendo credenciais PS0...")
+                        page.fill(f"xpath={SAP_USER_XPATH}", usuario_ps0)
+                        page.fill(f"xpath={SAP_PASSWORD_XPATH}", senha_ps0)
+                        page.press(f"xpath={SAP_PASSWORD_XPATH}", "Enter")
+                        page.wait_for_function("document.querySelector('#sap-user') === null", timeout=120000)
+                        print("Login automático realizado, continuando...")
+                    else:
+                        print("Tela de login detectada no início — aguardando login manual...")
+                        page.wait_for_function("document.querySelector('#sap-user') === null", timeout=120000)
+                        print("Login realizado, continuando...")
+                else:
+                    print("Campos de login não exibidos no início — seguindo fluxo padrão.")
+            except Exception as e:
+                print(f"Falha na checagem de login inicial: {e}. Seguindo fluxo padrão.")
             
             page.wait_for_timeout(5000)
 
@@ -493,6 +507,57 @@ filtro_faturar_vazias_var.trace_add("write", lambda *args: atualizar_tabela())
 filtro_var.trace_add("write", lambda *args: atualizar_tabela())
 filtro_canceladas_var.trace_add("write", lambda *args: atualizar_tabela())
 
+
+def solicitar_credenciais_ps0(parent):
+    resultado = {"usuario": "", "senha": ""}
+
+    popup = ctk.CTkToplevel(parent)
+    popup.title("Credenciais PS0")
+    popup.geometry("380x220")
+    popup.resizable(False, False)
+    popup.transient(parent)
+    popup.grab_set()
+
+    ctk.CTkLabel(
+        popup,
+        text="Informe usuário e senha do PS0 para executar:",
+        wraplength=340,
+        justify="left"
+    ).pack(padx=20, pady=(18, 10), anchor="w")
+
+    ctk.CTkLabel(popup, text="Usuário").pack(padx=20, anchor="w")
+    entry_usuario = ctk.CTkEntry(popup)
+    entry_usuario.pack(fill="x", padx=20, pady=(4, 10))
+
+    ctk.CTkLabel(popup, text="Senha").pack(padx=20, anchor="w")
+    entry_senha = ctk.CTkEntry(popup, show="*")
+    entry_senha.pack(fill="x", padx=20, pady=(4, 14))
+
+    def confirmar_credenciais():
+        usuario = entry_usuario.get().strip()
+        senha = entry_senha.get().strip()
+
+        if not usuario or not senha:
+            messagebox.showwarning("Atenção", "Preencha usuário e senha do PS0.", parent=popup)
+            return
+
+        resultado["usuario"] = usuario
+        resultado["senha"] = senha
+        popup.destroy()
+
+    btn_ok = ctk.CTkButton(popup, text="OK", command=confirmar_credenciais, width=120)
+    btn_ok.pack(pady=(0, 16))
+
+    popup.bind("<Return>", lambda _event: confirmar_credenciais())
+    popup.protocol("WM_DELETE_WINDOW", popup.destroy)
+
+    entry_usuario.focus_set()
+    parent.wait_window(popup)
+
+    if resultado["usuario"] and resultado["senha"]:
+        return resultado["usuario"], resultado["senha"]
+    return None, None
+
 def executar():
     escolhido = combo.get()
     if not escolhido:
@@ -508,15 +573,12 @@ def executar():
 
     preparar_clipboard(encontrados, escolhido)
 
-    resposta = messagebox.askyesno(
-        "Confirmação",
-        f"Foram encontrados {len(encontrados)} registros.\n\nDeseja mesmo executar a cobrança\nreferente a {escolhido}?"
-    )
-
-    if resposta:
-        abrir_sap_web(escolhido, encontrados)
-    else:
+    usuario_ps0, senha_ps0 = solicitar_credenciais_ps0(app)
+    if not usuario_ps0 or not senha_ps0:
         messagebox.showinfo("Cancelado", "Operação cancelada.")
+        return
+
+    abrir_sap_web(escolhido, encontrados, usuario_ps0, senha_ps0)
 
 def confirmar():
     atualizar_tabela()
