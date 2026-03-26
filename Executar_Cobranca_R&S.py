@@ -591,7 +591,7 @@ def executar():
         messagebox.showinfo("Info", f"Nenhum item selecionado para {escolhido}")
         return
 
-    if any(str(item.get("indice", "")).strip() == "" for item in encontrados):
+    if any(item.get("indice") is None or str(item.get("indice")).strip() == "" for item in encontrados):
         messagebox.showwarning(
             "Atenção",
             "Não posso executar com campos vazios na coluna Índice."
