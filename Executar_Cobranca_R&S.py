@@ -441,8 +441,26 @@ for col, h in enumerate(headers):
         )
         scrollable_frame.grid_columnconfigure(col, weight=1)
 
-executar_btn = ctk.CTkButton(app, text="Executar", command=lambda: executar())
-executar_btn.pack(pady=10)
+frame_executar = ctk.CTkFrame(app, fg_color="transparent")
+frame_executar.pack(pady=10)
+
+executar_btn = ctk.CTkButton(frame_executar, text="Executar", command=lambda: executar())
+executar_btn.pack(side="left", padx=(0, 12))
+
+contador_registros_var = ctk.StringVar(value="Total de Registros: 0")
+label_total_registros = ctk.CTkLabel(frame_executar, textvariable=contador_registros_var)
+label_total_registros.pack(side="left")
+
+def set_controles_execucao_habilitados(habilitado: bool):
+    estado = "normal" if habilitado else "disabled"
+    executar_btn.configure(state=estado)
+    btn_cancelar_cobranca.configure(state=estado)
+    check_filtro_faturar_vazias.configure(state=estado)
+    check_filtro_canceladas.configure(state=estado)
+    check_filtro.configure(state=estado)
+
+# Inicialmente, os controles ficam bloqueados até clicar em Confirmar.
+set_controles_execucao_habilitados(False)
 
 # -------------------- Funções Auxiliares -------------------- #
 def preparar_clipboard(dados_filtrados, mes_ano):
@@ -482,6 +500,8 @@ def atualizar_tabela():
     if filtro_canceladas_var.get():
         encontrados = [d for d in encontrados if "cancelada" in str(d.get("status", "")).lower()]
 
+    contador_registros_var.set(f"Total de Registros: {len(encontrados)}")
+
     for row_idx, d in enumerate(encontrados, start=1):
         bg_color = "#f5f5f5" if row_idx % 2 == 0 else "#ffffff"
         
@@ -513,7 +533,7 @@ def solicitar_credenciais_ps0(parent):
 
     popup = ctk.CTkToplevel(parent)
     popup.title("Credenciais PS0")
-    popup.geometry("380x220")
+    popup.geometry("380x260")
     popup.resizable(False, False)
     popup.transient(parent)
     popup.grab_set()
@@ -571,6 +591,13 @@ def executar():
         messagebox.showinfo("Info", f"Nenhum item selecionado para {escolhido}")
         return
 
+    if any(str(item.get("indice", "")).strip() == "" for item in encontrados):
+        messagebox.showwarning(
+            "Atenção",
+            "Não posso executar com campos vazios na coluna Índice."
+        )
+        return
+
     preparar_clipboard(encontrados, escolhido)
 
     usuario_ps0, senha_ps0 = solicitar_credenciais_ps0(app)
@@ -581,6 +608,7 @@ def executar():
     abrir_sap_web(escolhido, encontrados, usuario_ps0, senha_ps0)
 
 def confirmar():
+    set_controles_execucao_habilitados(True)
     atualizar_tabela()
 
 btn_confirmar.configure(command=confirmar)
