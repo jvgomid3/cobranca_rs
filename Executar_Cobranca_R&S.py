@@ -211,7 +211,8 @@ def abrir_sap_web(mes_ano, encontrados, usuario_ps0=None, senha_ps0=None):
             
             # Clica no botão e preenche o campo de texto
             try:
-                page.click('//*[@id="M0:46:1:1:2B256::4:12"]')
+                campo_texto_xpath = '//*[@id="M0:46:1:1:2B256::4:12"]'
+                page.click(campo_texto_xpath)
                 page.wait_for_timeout(1000)
                 
                 # Pega o mês e ano atual
@@ -226,8 +227,8 @@ def abrir_sap_web(mes_ano, encontrados, usuario_ps0=None, senha_ps0=None):
                 # Monta o texto completo
                 texto_campo = f"Recuperação custo {mes_atual}/{ano_atual} HRS2-LA R&S"
                 
-                # Preenche o campo usando keyboard.type
-                page.keyboard.type(texto_campo)
+                # Preenche diretamente o campo informado
+                page.fill(campo_texto_xpath, texto_campo)
                 print(f"Campo preenchido com: {texto_campo}")
                 
             except Exception as e:
@@ -598,12 +599,14 @@ def executar():
         )
         return
 
-    preparar_clipboard(encontrados, escolhido)
-
     usuario_ps0, senha_ps0 = solicitar_credenciais_ps0(app)
     if not usuario_ps0 or not senha_ps0:
         messagebox.showinfo("Cancelado", "Operação cancelada.")
         return
+
+    # Copia os dados para o clipboard por último, evitando que o popup de senha
+    # sobrescreva o conteúdo antes do processo no SAP.
+    preparar_clipboard(encontrados, escolhido)
 
     abrir_sap_web(escolhido, encontrados, usuario_ps0, senha_ps0)
 
